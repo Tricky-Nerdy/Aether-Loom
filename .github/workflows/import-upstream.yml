@@ -1,0 +1,51 @@
+name: Import AetherBlend v0.3.7 baseline
+
+on:
+  push:
+    paths:
+      - '.github/workflows/import-upstream.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Fetch pinned upstream source
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch v0.3.7 https://github.com/ShinoMythmaker/Aetherblend.git /tmp/aetherblend-upstream
+          actual=$(git -C /tmp/aetherblend-upstream rev-parse HEAD)
+          test "$actual" = 90099ab78d1f7032d0af950e6a8158b230600567
+          cp /tmp/aetherblend-upstream/README.md UPSTREAM_README.md
+          rsync -a --exclude .git --exclude .github --exclude README.md /tmp/aetherblend-upstream/ ./
+          python -m compileall -q __init__.py core data features preferences.py properties ui utils
+          test -f LICENSE
+          test -f blender_manifest.toml
+      - name: Fetch and check official installer ZIP
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --output Aetherblend-v0.3.7.zip https://github.com/ShinoMythmaker/Aetherblend/releases/download/v0.3.7/Aetherblend-v0.3.7.zip
+          unzip -tq Aetherblend-v0.3.7.zip
+      - name: Commit verified source to main
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git reset -- Aetherblend-v0.3.7.zip
+          if ! git diff --cached --quiet; then
+            git commit -m "Import upstream AetherBlend v0.3.7 source"
+            git push origin HEAD:main
+          fi
+      - name: Attach official ZIP to this run
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-Aetherblend-v0.3.7
+          path: Aetherblend-v0.3.7.zip
+          if-no-files-found: error
