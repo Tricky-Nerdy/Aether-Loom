@@ -1,0 +1,36 @@
+name: Validate AetherBlend
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python syntax validation
+        run: python -m compileall -q .
+      - name: Validate manifest version and Python 3.14 Linux wheel
+        run: |
+          python - <<'PY'
+          import pathlib, tomllib
+          manifest = tomllib.loads(pathlib.Path("blender_manifest.toml").read_text())
+          assert manifest["blender_version_min"] == "5.2.0"
+          wheels = manifest["wheels"]
+          assert any("cp314" in w and "x86_64" in w and "manylinux" in w for w in wheels)
+          print("manifest validation passed")
+          PY
+      - name: Validate expression extraction boundary
+        run: |
+          python - <<'PY'
+          import importlib.util
+          p="features/animation/expression_presets.py"
+          spec=importlib.util.spec_from_file_location("expression_presets",p)
+          m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+          doc={"Bones":{"j_f_mayu_l":{"Rotation":"0, 0, 0, 1"},"j_ago":{"Rotation":"0, 0, 0, 1"},"j_ude_a_l":{"Rotation":"0, 0, 0, 1"}}}
+          out=m.extract_expression_document(doc)
+          assert set(out["bones"])=={"j_f_mayu_l","j_ago"}
+          print("expression/body isolation passed")
+          PY
