@@ -31,6 +31,20 @@ class AETHER_PT_ExportPanel(bpy.types.Panel):
         pose_box.operator("aether.open_root_pose_menu", text="Browse by People / Action...", icon="VIEWZOOM")
         pose_box.operator("aether.pose_import", text="Open Pose File Browser...", icon="FILE_FOLDER")
 
+        expression_box = layout.box()
+        expression_box.label(text="Expression Library", icon="SHAPEKEY_DATA")
+        current_expression = context.scene.aether_expression_current_file or "Choose an expression…"
+        if len(current_expression) > 52:
+            current_expression = current_expression[:49] + "…"
+        row = expression_box.row(align=True)
+        previous_expression = row.operator("aether.cycle_expression", text="", icon="TRIA_LEFT")
+        previous_expression.direction = -1
+        row.label(text=current_expression, icon="SHAPEKEY_DATA")
+        next_expression = row.operator("aether.cycle_expression", text="", icon="TRIA_RIGHT")
+        next_expression.direction = 1
+        expression_box.prop(context.scene, "aether_expression_strength", slider=True)
+        expression_box.prop(context.scene, "aether_expression_library_path", text="")
+
         row = layout.row(align=True)
         row.operator("aether.anim_import", text="Anim Import", icon="IMPORT")
 
