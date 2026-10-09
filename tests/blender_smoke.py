@@ -140,8 +140,33 @@ def test_pose_import():
         pass
 
 
+def test_expression_boundary():
+    expression_presets = importlib.import_module(
+        f"{PACKAGE_PREFIX}.features.animation.expression_presets"
+    )
+    assert expression_presets.is_expression_bone("j_f_mayu_l")
+    assert expression_presets.is_expression_bone("n_f_lip_l")
+    assert expression_presets.is_expression_bone("j_ago")
+    assert not expression_presets.is_expression_bone("j_kao")
+    assert not expression_presets.is_expression_bone("j_kami_a")
+    assert not expression_presets.is_expression_bone("j_ude_a_l")
+
+    document = {
+        "Bones": {
+            "j_f_mayu_l": {"Rotation": "0, 0, 0, 1"},
+            "j_ago": {"Rotation": "0, 0, 0, 1"},
+            "j_ude_a_l": {"Rotation": "0, 0, 0, 1"},
+        }
+    }
+    preset = expression_presets.extract_expression_document(document, name="Smoke")
+    assert set(preset["bones"]) == {"j_f_mayu_l", "j_ago"}, (
+        "Expression extraction must never include body-pose bones"
+    )
+
+
 test_heel_pivot()
 test_pose_import()
+test_expression_boundary()
 if not USING_INSTALLED_ADDON:
     package.unregister()
 print("AETHER_LOOM_BLENDER_SMOKE_OK")
