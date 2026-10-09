@@ -1,9 +1,6 @@
 name: Import AetherBlend v0.3.7 baseline
 
 on:
-  push:
-    paths:
-      - '.github/workflows/import-upstream.yml'
   workflow_dispatch:
 
 permissions:
@@ -19,6 +16,7 @@ jobs:
       - name: Fetch pinned upstream source
         run: |
           set -euo pipefail
+          test ! -f blender_manifest.toml || { echo 'Source already imported; refusing to overwrite it'; exit 1; }
           git clone --depth 1 --branch v0.3.7 https://github.com/ShinoMythmaker/Aetherblend.git /tmp/aetherblend-upstream
           actual=$(git -C /tmp/aetherblend-upstream rev-parse HEAD)
           test "$actual" = 90099ab78d1f7032d0af950e6a8158b230600567
