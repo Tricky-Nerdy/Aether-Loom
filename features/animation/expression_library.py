@@ -4,7 +4,8 @@ import json
 from pathlib import Path
 
 import bpy
-from bpy.props import CollectionProperty, FloatProperty, IntProperty, StringProperty\nfrom bpy.types import PropertyGroup
+from bpy.props import CollectionProperty, FloatProperty, IntProperty, StringProperty
+from bpy.types import PropertyGroup
 from bpy.types import Operator
 
 from .expression_presets import is_expression_bone
