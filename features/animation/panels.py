@@ -44,6 +44,16 @@ class AETHER_PT_ExportPanel(bpy.types.Panel):
         next_expression.direction = 1
         expression_box.prop(context.scene, "aether_expression_strength", slider=True)
         expression_box.prop(context.scene, "aether_expression_library_path", text="")
+        row = expression_box.row(align=True)
+        row.operator("aether.add_expression_layer", text="Add Layer", icon="ADD")
+        row.operator("aether.clear_expression_layers", text="Clear", icon="TRASH")
+        layers = context.scene.aether_expression_layers
+        if layers:
+            expression_box.label(text=f"Layers: {len(layers)}", icon="SEQ_STRIP_DUPLICATE")
+            for index, layer in enumerate(layers):
+                row = expression_box.row(align=True)
+                row.label(text=f"{index + 1}. {layer.file}")
+                row.prop(layer, "strength", text="", slider=True)
 
         row = layout.row(align=True)
         row.operator("aether.anim_import", text="Anim Import", icon="IMPORT")
