@@ -8,7 +8,7 @@ A public development copy of [AetherBlend](https://github.com/ShinoMythmaker/Aet
 
 ## Source and validation
 
-The bootstrap workflow imports the upstream v0.3.7 source, preserves its license and README, checks Python syntax, and attaches a ZIP artifact to its run. Passing syntax checks does not prove Blender runtime compatibility or pose import on the user's PC. Inspect the run before using the source tree as a customized installer.
+The upstream v0.3.7 source was imported on `main` in commit `0e428218`. The [bootstrap run](https://github.com/Tricky-Nerdy/Aether-Loom/actions/runs/37968360967) passed Python syntax checks and ZIP integrity checks and attached the official installer ZIP. That run did not test Blender runtime behavior or pose import on the user's PC. The import workflow is now manual and refuses to overwrite the source tree.
 
 ## Custom changes still to recover
 
