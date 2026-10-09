@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 import bpy
-from bpy.props import FloatProperty, StringProperty
+from bpy.props import CollectionProperty, FloatProperty, IntProperty, StringProperty\nfrom bpy.types import PropertyGroup
 from bpy.types import Operator
 
 from .expression_presets import is_expression_bone
@@ -87,6 +87,66 @@ def _apply_preset(context, path, preset):
     context.view_layer.update()
 
 
+class AETHER_PG_ExpressionLayer(PropertyGroup):
+    file: StringProperty(name="Expression")
+    strength: FloatProperty(name="Strength", min=0.0, max=1.0, default=1.0, subtype="FACTOR")
+
+
+def _apply_layers(context):
+    armature = _target_armature(context)
+    if armature is None:
+        raise RuntimeError("No visible armature found")
+    baseline = getattr(context.scene, "_aether_expression_baseline", None)
+    if baseline is None:
+        baseline = _capture_face(armature)
+        context.scene._aether_expression_baseline = baseline
+    _restore_face(armature, baseline)
+    available = {path.name: (path, preset) for path, preset in _records(context)}
+    for layer in context.scene.aether_expression_layers:
+        match = available.get(layer.file)
+        if match is None or layer.strength <= 0.0:
+            continue
+        path, preset = match
+        old_strength = context.scene.aether_expression_strength
+        context.scene["aether_expression_strength"] = layer.strength
+        _apply_preset(context, path, preset)
+        context.scene["aether_expression_strength"] = old_strength
+    context.view_layer.update()
+
+
+class AETHER_OT_AddExpressionLayer(Operator):
+    bl_idname = "aether.add_expression_layer"
+    bl_label = "Add Expression Layer"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        current = context.scene.aether_expression_current_file
+        if not current:
+            return {"CANCELLED"}
+        layer = context.scene.aether_expression_layers.add()
+        layer.file = current
+        layer.strength = context.scene.aether_expression_strength
+        context.scene.aether_expression_layer_index = len(context.scene.aether_expression_layers) - 1
+        _apply_layers(context)
+        return {"FINISHED"}
+
+
+class AETHER_OT_ClearExpressionLayers(Operator):
+    bl_idname = "aether.clear_expression_layers"
+    bl_label = "Clear Expression Layers"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        armature = _target_armature(context)
+        baseline = getattr(context.scene, "_aether_expression_baseline", None)
+        if armature is not None and baseline is not None:
+            _restore_face(armature, baseline)
+        context.scene.aether_expression_layers.clear()
+        context.scene.aether_expression_layer_index = -1
+        context.view_layer.update()
+        return {"FINISHED"}
+
+
 class AETHER_OT_CycleExpression(Operator):
     bl_idname = "aether.cycle_expression"
     bl_label = "Cycle Expression"
@@ -134,14 +194,19 @@ def _strength_updated(scene, context):
 
 
 def register():
+    bpy.utils.register_class(AETHER_PG_ExpressionLayer)
     bpy.utils.register_class(AETHER_OT_CycleExpression)
     bpy.utils.register_class(AETHER_OT_RefreshExpression)
+    bpy.utils.register_class(AETHER_OT_AddExpressionLayer)
+    bpy.utils.register_class(AETHER_OT_ClearExpressionLayers)
     bpy.types.Scene.aether_expression_library_path = StringProperty(
         name="Expression Library",
         subtype="DIR_PATH",
         default="//expressions/",
     )
     bpy.types.Scene.aether_expression_current_file = StringProperty(default="")
+    bpy.types.Scene.aether_expression_layers = CollectionProperty(type=AETHER_PG_ExpressionLayer)
+    bpy.types.Scene.aether_expression_layer_index = IntProperty(default=-1)
     bpy.types.Scene.aether_expression_strength = FloatProperty(
         name="Blend",
         description="Blend selected expression over the current facial baseline",
@@ -154,7 +219,7 @@ def register():
 
 
 def unregister():
-    for name in ("aether_expression_strength", "aether_expression_current_file", "aether_expression_library_path"):
+    for name in ("aether_expression_layer_index", "aether_expression_layers", "aether_expression_strength", "aether_expression_current_file", "aether_expression_library_path"):
         if hasattr(bpy.types.Scene, name):
             delattr(bpy.types.Scene, name)
     bpy.utils.unregister_class(AETHER_OT_RefreshExpression)
