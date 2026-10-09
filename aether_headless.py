@@ -38,6 +38,16 @@ def _parser():
     pose.add_argument("--no-world-rotation", action="store_true")
     pose.add_argument("--no-preserve-face", action="store_true")
     pose.add_argument("--keyframes", action="store_true")
+
+    expression = sub.add_parser("expression-extract", help="Extract facial bones into a named expression preset")
+    expression.add_argument("--pose", required=True)
+    expression.add_argument("--output", required=True)
+    expression.add_argument("--name", default="")
+
+    batch = sub.add_parser("expression-batch", help="Extract facial presets from an Anamnesis pose library")
+    batch.add_argument("--library", required=True)
+    batch.add_argument("--output-directory", required=True)
+    batch.add_argument("--no-recursive", action="store_true")
     return parser
 
 
@@ -89,10 +99,52 @@ def _pose_import(args):
     }
 
 
+def _expression_extract(args):
+    from features.animation.expression_presets import extract_expression_file
+
+    preset = extract_expression_file(args.pose, args.output, name=args.name)
+    return {
+        "ok": True,
+        "command": "expression-extract",
+        "pose": str(Path(args.pose).expanduser().resolve()),
+        "output": str(Path(args.output).expanduser().resolve()),
+        "name": preset["name"],
+        "bones": len(preset["bones"]),
+    }
+
+
+def _expression_batch(args):
+    from features.animation.expression_presets import batch_extract
+
+    results = batch_extract(
+        args.library,
+        args.output_directory,
+        recursive=not args.no_recursive,
+    )
+    succeeded = sum(1 for item in results if item["ok"])
+    failed = len(results) - succeeded
+    return {
+        "ok": failed == 0,
+        "command": "expression-batch",
+        "library": str(Path(args.library).expanduser().resolve()),
+        "output_directory": str(Path(args.output_directory).expanduser().resolve()),
+        "succeeded": succeeded,
+        "failed": failed,
+        "results": results,
+    }
+
+
 def main():
     args = _parser().parse_args(_argv())
     try:
-        result = _pose_import(args)
+        if args.command == "pose-import":
+            result = _pose_import(args)
+        elif args.command == "expression-extract":
+            result = _expression_extract(args)
+        elif args.command == "expression-batch":
+            result = _expression_batch(args)
+        else:
+            raise ValueError(f"Unsupported command: {args.command}")
     except Exception as exc:
         print(json.dumps({"ok": False, "error": str(exc)}, sort_keys=True))
         raise
