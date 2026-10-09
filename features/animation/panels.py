@@ -16,7 +16,24 @@ class AETHER_PT_ExportPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        
+
+        pose_box = layout.box()
+        pose_box.label(text="Pose Library Browser", icon="POSE_HLT")
+        current_pose = context.scene.aether_pose_current_file or "Choose a pose…"
+        if len(current_pose) > 52:
+            current_pose = current_pose[:49] + "…"
+        row = pose_box.row(align=True)
+        previous = row.operator("aether.cycle_pose", text="", icon="TRIA_LEFT")
+        previous.direction = -1
+        row.label(text=current_pose, icon="POSE_HLT")
+        following = row.operator("aether.cycle_pose", text="", icon="TRIA_RIGHT")
+        following.direction = 1
+        pose_box.operator("aether.open_root_pose_menu", text="Browse by People / Action...", icon="VIEWZOOM")
+        pose_box.operator("aether.pose_import", text="Open Pose File Browser...", icon="FILE_FOLDER")
+
+        row = layout.row(align=True)
+        row.operator("aether.anim_import", text="Anim Import", icon="IMPORT")
+
         # Export Operators
         row = layout.row(align=True)
         row.operator("aether.pose_export", text="Pose Export", icon = "EXPORT")
@@ -35,4 +52,4 @@ def register():
 
 def unregister():
     bpy.utils.unregister_class(AETHER_PT_ExportPanel)
-    bpy.types.TOPBAR_MT_file_export.remove(menu_func_export) 
+    bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)

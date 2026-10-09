@@ -419,12 +419,49 @@ class AetherRigGenerator:
     def _run_rigify_generation(self, meta_rig: bpy.types.Object) -> bool:
         self._set_meta_rig_visibility(meta_rig, visible=True)
         utils.object.select_only(meta_rig)
+        self._prepare_leg_heel_pivots(meta_rig)
 
         if bpy.ops.pose.rigify_generate() == {'FINISHED'}:
             return True
 
         self._set_meta_rig_visibility(meta_rig, visible=False)
         return False
+
+    def _prepare_leg_heel_pivots(self, meta_rig: bpy.types.Object) -> None:
+        """Keep generated heel pivots untyped so Rigify can discover them.
+
+        Rigify's limbs.leg searches for an unconnected leaf child of the foot
+        bone and deliberately ignores bones that have their own rig type.
+        AetherBlend assigns basic.raw_copy to every source bone by default,
+        including its heel_pivot helpers, so clear that default type on the
+        helper before Rigify runs.
+        """
+        for root in meta_rig.pose.bones:
+            if root.rigify_type != "limbs.leg":
+                continue
+
+            chain = [root.bone]
+            current = root.bone
+            while True:
+                connected_children = [child for child in current.children if child.use_connect]
+                if len(connected_children) != 1:
+                    break
+                current = connected_children[0]
+                chain.append(current)
+
+            if len(chain) < 3:
+                continue
+
+            foot = chain[2]
+            for child in foot.children:
+                if (
+                    "heel" in child.name.casefold()
+                    and not child.use_connect
+                    and not child.children
+                ):
+                    pose_bone = meta_rig.pose.bones.get(child.name)
+                    if pose_bone:
+                        pose_bone.rigify_type = " "
 
     def _apply_post_generation_operations(self, armature: bpy.types.Object, operation_stack: ABOperationStack | None):
         if not operation_stack:

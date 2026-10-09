@@ -265,6 +265,13 @@ class AetherBlendPreferences(bpy.types.AddonPreferences):
         description="Select the default directory for saving pose files"
     ) #type: ignore
 
+    default_pose_import_path: StringProperty(
+        name="Pose Import",
+        subtype='DIR_PATH',
+        description="Directory shown by default for pose import and the pose-library picker",
+        default=str(Path.home() / "Documents" / "FFXIV Poses" / "Flat-Pose-Library-2026-08-15"),
+    ) #type: ignore
+
     default_anim_export_path: StringProperty(
         name="Anim Export",
         subtype='DIR_PATH',
@@ -295,12 +302,6 @@ class AetherBlendPreferences(bpy.types.AddonPreferences):
         description="JSON list of template names hidden from dropdown menus",
         default=""
     ) #type: ignore
-
-    # default_pose_import_path: StringProperty(
-    #     name="Pose Import",
-    #     subtype='DIR_PATH',
-    #     description="Select the default directory for importing pose files"
-    # ) #type: ignore
 
     ## Test
 
@@ -451,7 +452,7 @@ class AetherBlendPreferences(bpy.types.AddonPreferences):
             box = layout.box()
             box.label(text="Default File Paths", icon='FILE_FOLDER')
             box.prop(self, "default_meddle_import_path")
-            # box.prop(self, "default_pose_import_path")
+            box.prop(self, "default_pose_import_path")
             box.prop(self, "default_pose_export_path")
             box.prop(self, "default_anim_export_path")
             box.prop(self, "default_vfx_export_path")
