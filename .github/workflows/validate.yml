@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -34,3 +37,35 @@ jobs:
           assert set(out["bones"])=={"j_f_mayu_l","j_ago"}
           print("expression/body isolation passed")
           PY
+
+      - name: Package Aether Loom v0.5.1
+        if: github.ref == 'refs/heads/main'
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+          root = Path(".")
+          out = Path("Aether-Loom-0.5.1.zip")
+          skip_roots = {".git", ".github", "__pycache__"}
+          with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+              for p in root.rglob("*"):
+                  if not p.is_file() or p == out:
+                      continue
+                  rel = p.relative_to(root)
+                  if any(part in skip_roots or part == "__pycache__" for part in rel.parts):
+                      continue
+                  if p.suffix in {".pyc", ".pyo"}:
+                      continue
+                  z.write(p, rel.as_posix())
+          print(out, out.stat().st_size)
+          PY
+      - name: Publish Aether Loom v0.5.1
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v0.5.1 >/dev/null 2>&1; then
+            echo "v0.5.1 already exists"
+          else
+            gh release create v0.5.1 Aether-Loom-0.5.1.zip --target main --title "Aether Loom v0.5.1" --notes "Aether Loom v0.5.1 adds the dedicated Expression Library workflow, expression extraction and blending controls, multi-expression layers, and the latest FFXIV pose-import improvements. Validated on main before packaging."
+          fi
