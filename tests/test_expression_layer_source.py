@@ -37,6 +37,16 @@ class ExpressionLayerSourceTests(unittest.TestCase):
         self.assertIn("_restore_face", calls)
         self.assertIn("_blend_preset", calls)
 
+    def test_layer_strength_has_live_update_callback(self):
+        source = SOURCE.read_text(encoding="utf-8")
+        self.assertIn("update=_layer_strength_updated", source)
+        fn = self.functions["_layer_strength_updated"]
+        calls = [
+            n.func.id for n in ast.walk(fn)
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+        ]
+        self.assertIn("_apply_layers", calls)
+
     def test_layer_lookup_uses_full_path(self):
         fn = self.functions["_apply_layers"]
         text = ast.unparse(fn)
