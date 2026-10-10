@@ -26,6 +26,23 @@ class AETHER_OT_ScanXIVToolsExports(Operator):
         return {"FINISHED"} if result["connected"] else {"CANCELLED"}
 
 
+class AETHER_OT_DetectXIVTools(Operator):
+    bl_idname = "aether.detect_xivtools"
+    bl_label = "Detect XIVTools Paths"
+
+    def execute(self, context):
+        settings = discover_xivtools_settings()
+        if not settings["config_found"]:
+            self.report({"WARNING"}, "XIVTools settings.json not found")
+            return {"CANCELLED"}
+        if settings["game"]:
+            context.scene.aether_ffxiv_game_path = settings["game"]
+        if settings["mods"] and not context.scene.aether_xivtools_export_path:
+            context.scene.aether_xivtools_export_path = settings["mods"]
+        self.report({"INFO"}, "Detected XIVTools game and mods paths")
+        return {"FINISHED"}
+
+
 class AETHER_PT_XIVToolsConnection(Panel):
     bl_label = "FFXIV / XIVTools Connection"
     bl_idname = "AETHER_PT_xivtools_connection"
@@ -39,12 +56,13 @@ class AETHER_PT_XIVToolsConnection(Panel):
         layout.prop(scene, "aether_ffxiv_game_path")
         layout.prop(scene, "aether_xivtools_path")
         layout.prop(scene, "aether_xivtools_export_path")
+        layout.operator("aether.detect_xivtools", icon="FILE_FOLDER")
         layout.operator("aether.scan_xivtools_exports", icon="FILE_REFRESH")
         layout.label(text=scene.aether_xivtools_scan_summary)
         layout.label(text="Read-only scan; automatic export not yet supported")
 
 
-CLASSES = (AETHER_OT_ScanXIVToolsExports, AETHER_PT_XIVToolsConnection)
+CLASSES = (AETHER_OT_ScanXIVToolsExports, AETHER_OT_DetectXIVTools, AETHER_PT_XIVToolsConnection)
 
 
 def register():
