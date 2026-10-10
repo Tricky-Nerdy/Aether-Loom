@@ -35,6 +35,22 @@ def inspect_paths(game_path, xivtools_path, export_path):
     return {"connected": not problems, "problems": problems, "files": files}
 
 
+def discover_xivtools_settings(config_path=None):
+    """Read XIVTools' documented configuration without launching or modifying it."""
+    import json
+    config = Path(config_path).expanduser() if config_path else Path.home() / ".config/xivtools/settings.json"
+    if not config.is_file():
+        return {"game": "", "mods": "", "config_found": False}
+    try:
+        settings = json.loads(config.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"game": "", "mods": "", "config_found": False}
+    if not isinstance(settings, dict):
+        return {"game": "", "mods": "", "config_found": False}
+    return {"game": str(settings.get("GamePath") or ""),
+            "mods": str(settings.get("ModsPath") or ""), "config_found": True}
+
+
 if __name__ == "__main__":
     import argparse
     import json
