@@ -93,9 +93,25 @@ def _apply_preset(context, path, preset):
     context.view_layer.update()
 
 
+def _layer_strength_updated(_layer, context):
+    """Re-evaluate the complete stack when an individual layer slider changes."""
+    try:
+        _apply_layers(context)
+    except (RuntimeError, AttributeError):
+        # Blender can invoke property callbacks while a scene is being torn down.
+        pass
+
+
 class AETHER_PG_ExpressionLayer(PropertyGroup):
     file: StringProperty(name="Expression")
-    strength: FloatProperty(name="Strength", min=0.0, max=1.0, default=1.0, subtype="FACTOR")
+    strength: FloatProperty(
+        name="Strength",
+        min=0.0,
+        max=1.0,
+        default=1.0,
+        subtype="FACTOR",
+        update=_layer_strength_updated,
+    )
 
 
 def _apply_layers(context):
