@@ -225,3 +225,6 @@ def unregister():
             delattr(bpy.types.Scene, name)
     bpy.utils.unregister_class(AETHER_OT_RefreshExpression)
     bpy.utils.unregister_class(AETHER_OT_CycleExpression)
+    bpy.utils.unregister_class(AETHER_OT_ClearExpressionLayers)
+    bpy.utils.unregister_class(AETHER_OT_AddExpressionLayer)
+    bpy.utils.unregister_class(AETHER_PG_ExpressionLayer)
