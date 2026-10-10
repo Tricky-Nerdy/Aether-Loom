@@ -55,6 +55,30 @@ def _restore_face(armature, snapshot):
             bone.location, bone.rotation_quaternion, bone.scale = values
 
 
+def _blend_preset(armature, preset, strength):
+    """Apply one facial preset without resetting previously blended layers."""
+    from mathutils import Quaternion, Vector
+
+    for name, transform in preset.get("bones", {}).items():
+        bone = armature.pose.bones.get(name) or armature.pose.bones.get(f"LINK-{name}")
+        if bone is None or not is_expression_bone(name):
+            continue
+        bone.rotation_mode = "QUATERNION"
+        rotation = transform.get("Rotation")
+        if rotation:
+            x, y, z, w = (float(v.strip()) for v in str(rotation).split(","))
+            target = Quaternion((w, x, y, z)).normalized()
+            bone.rotation_quaternion = bone.rotation_quaternion.slerp(target, strength)
+        position = transform.get("Position")
+        if position:
+            target = Vector(tuple(float(v.strip()) for v in str(position).split(",")))
+            bone.location = bone.location.lerp(target, strength)
+        scale = transform.get("Scale")
+        if scale:
+            target = Vector(tuple(float(v.strip()) for v in str(scale).split(",")))
+            bone.scale = bone.scale.lerp(target, strength)
+
+
 def _apply_preset(context, path, preset):
     armature = _target_armature(context)
     if armature is None:
@@ -64,26 +88,7 @@ def _apply_preset(context, path, preset):
         baseline = _capture_face(armature)
         context.scene._aether_expression_baseline = baseline
     _restore_face(armature, baseline)
-
-    strength = context.scene.aether_expression_strength
-    for name, transform in preset.get("bones", {}).items():
-        bone = armature.pose.bones.get(name) or armature.pose.bones.get(f"LINK-{name}")
-        if bone is None:
-            continue
-        bone.rotation_mode = "QUATERNION"
-        rotation = transform.get("Rotation")
-        if rotation:
-            x, y, z, w = (float(v.strip()) for v in str(rotation).split(","))
-            target = bone.rotation_quaternion.__class__((w, x, y, z)).normalized()
-            bone.rotation_quaternion = bone.rotation_quaternion.slerp(target, strength)
-        position = transform.get("Position")
-        if position:
-            target = bone.location.__class__(tuple(float(v.strip()) for v in str(position).split(",")))
-            bone.location = bone.location.lerp(target, strength)
-        scale = transform.get("Scale")
-        if scale:
-            target = bone.scale.__class__(tuple(float(v.strip()) for v in str(scale).split(",")))
-            bone.scale = bone.scale.lerp(target, strength)
+    _blend_preset(armature, preset, context.scene.aether_expression_strength)
     context.scene.aether_expression_current_file = path.name
     context.view_layer.update()
 
@@ -102,16 +107,13 @@ def _apply_layers(context):
         baseline = _capture_face(armature)
         context.scene._aether_expression_baseline = baseline
     _restore_face(armature, baseline)
-    available = {path.name: (path, preset) for path, preset in _records(context)}
+    available = {str(path): preset for path, preset in _records(context)}
     for layer in context.scene.aether_expression_layers:
-        match = available.get(layer.file)
-        if match is None or layer.strength <= 0.0:
+        if layer.strength <= 0.0:
             continue
-        path, preset = match
-        old_strength = context.scene.aether_expression_strength
-        context.scene["aether_expression_strength"] = layer.strength
-        _apply_preset(context, path, preset)
-        context.scene["aether_expression_strength"] = old_strength
+        preset = available.get(layer.file)
+        if preset is not None:
+            _blend_preset(armature, preset, layer.strength)
     context.view_layer.update()
 
 
@@ -125,7 +127,11 @@ class AETHER_OT_AddExpressionLayer(Operator):
         if not current:
             return {"CANCELLED"}
         layer = context.scene.aether_expression_layers.add()
-        layer.file = current
+        match = next((path for path, _ in _records(context) if path.name == current), None)
+        if match is None:
+            self.report({"WARNING"}, "Expression preset not found")
+            return {"CANCELLED"}
+        layer.file = str(match)
         layer.strength = context.scene.aether_expression_strength
         context.scene.aether_expression_layer_index = len(context.scene.aether_expression_layers) - 1
         _apply_layers(context)
